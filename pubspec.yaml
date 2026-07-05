@@ -1,0 +1,49 @@
+name: geo_attend
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management & Routing
+  get: ^4.6.6
+  
+  # Koneksi API & Keamanan Token
+  dio: ^5.4.0
+  flutter_secure_storage: ^9.0.0
+  
+  # Sensor Perangkat
+  geolocator: ^10.1.0
+  image_picker: ^1.0.7
+  
+  # UI & Tipografi
+  google_fonts: ^6.1.0
+  font_awesome_flutter: ^10.7.0
+  intl: ^0.20.2
+  image_cropper: ^12.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Linter bawaan flutter
+  flutter_lints: ^3.0.0
+
+  # Package untuk ubah logo otomatis
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+# ==========================================
+# KONFIGURASI FLUTTER LAUNCHER ICONS
+# ==========================================
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/app_icon.png" # Pastikan file gambar logo lu ada di folder ini ya
