@@ -3,25 +3,49 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../screens/dashboard/dashboard_screen.dart';
-import '../screens/auth/login_screen.dart'; // Import layar login untuk fungsi logout
+import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/superadmin/superadmin_dashboard_screen.dart';
+import '../screens/auth/login_screen.dart';
+import '../config/api_config.dart';
 
 class AuthController extends GetxController {
   // PENTING: Ganti dengan IP Address WiFi lokal Anda
-  final String apiUrl = 'http://192.168.18.16:8000/api'; 
-  
+  final String apiUrl = ApiConfig.baseUrl;
   final Dio dio = Dio();
   final storage = const FlutterSecureStorage();
 
-  // Variabel reaktif untuk mengubah status tombol menjadi loading
+  // Variabel reaktif
   var isLoading = false.obs;
+  var userRole = ''.obs; // 'karyawan' | 'admin' | 'superadmin'
+  var userName = ''.obs;
+  var userEmail = ''.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadSession(); // biar kalau app dibuka ulang, role kesimpen (auto-login)
+  }
+
+  Future<void> _loadSession() async {
+    String? role = await storage.read(key: 'user_role');
+    String? name = await storage.read(key: 'user_name');
+    String? email = await storage.read(key: 'user_email');
+    if (role != null) userRole.value = role;
+    if (name != null) userName.value = name;
+    if (email != null) userEmail.value = email;
+  }
 
   // ==========================================
   // FUNGSI LOGIN
   // ==========================================
   Future<void> login(String email, String password) async {
     if (email.isEmpty || password.isEmpty) {
-      Get.snackbar('Oops!', 'Email dan Password tidak boleh kosong',
-          backgroundColor: Colors.redAccent, colorText: Colors.white);
+      Get.snackbar(
+        'Oops!',
+        'Email dan Password tidak boleh kosong',
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
       return;
     }
 
@@ -35,36 +59,88 @@ class AuthController extends GetxController {
       );
 
       if (response.data['success'] == true) {
-        // Simpan token ke brankas HP
-        String token = response.data['data']['token'];
+        final data = response.data['data'];
+        String token = data['token'];
+
+        // TODO: sesuaikan path field ini dengan response asli Laravel kamu.
+        // Kalau strukturnya beda (misal role ada di data['user']['role']),
+        // kabarin aku, nanti aku pas-in.
+        final user = data['user'] ?? {};
+        String role = (user['role'] ?? '').toString().toLowerCase();
+        String name = user['name'] ?? '';
+        String userEmailValue = user['email'] ?? '';
+
+        // ---> AMBIL FOTO PROFIL DARI RESPONSE LOGIN (kalau backend
+        // menyertakannya di sini), biar begitu login foto langsung ke-cache
+        // dan gak perlu nunggu request ke /dashboard.
+        final photo = user['photo'];
+
+        // Simpan semua ke brankas HP
         await storage.write(key: 'auth_token', value: token);
+        await storage.write(key: 'user_role', value: role);
+        await storage.write(key: 'user_name', value: name);
+        await storage.write(key: 'user_email', value: userEmailValue);
+
+        if (photo != null && photo.toString().isNotEmpty) {
+          await storage.write(key: 'user_photo', value: photo.toString());
+        }
+
+        userRole.value = role;
+        userName.value = name;
+        userEmail.value = userEmailValue;
 
         Get.snackbar(
-          'Berhasil', 
-          'Selamat datang kembali!',
-          backgroundColor: Colors.green, 
+          'Berhasil',
+          'Selamat datang kembali, $name!',
+          backgroundColor: Colors.green,
           colorText: Colors.white,
           snackPosition: SnackPosition.TOP,
         );
 
-        // PERBAIKAN: Komentar dihapus dan tanpa keyword 'const'
-        Get.offAll(() => DashboardScreen());
+        _redirectByRole(role);
+      } else {
+        // Kasus success:false tapi status HTTP tetap 200
+        Get.snackbar(
+          'Gagal Login',
+          response.data['message'] ?? 'Email atau password salah',
+          backgroundColor: Colors.redAccent,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
       }
     } on DioException catch (e) {
       String errorMessage = 'Terjadi kesalahan sistem';
       if (e.response != null && e.response?.data != null) {
-        errorMessage = e.response?.data['message'] ?? 'Email atau password salah';
+        errorMessage =
+            e.response?.data['message'] ?? 'Email atau password salah';
       }
-      
+
       Get.snackbar(
-        'Gagal Login', 
+        'Gagal Login',
         errorMessage,
-        backgroundColor: Colors.redAccent, 
+        backgroundColor: Colors.redAccent,
         colorText: Colors.white,
         snackPosition: SnackPosition.TOP,
       );
     } finally {
       isLoading.value = false; // Matikan loading spinner
+    }
+  }
+
+  // Arahkan ke dashboard sesuai role
+  void _redirectByRole(String role) {
+    switch (role) {
+      case 'superadmin':
+        Get.offAll(() => SuperadminDashboardScreen());
+        break;
+      case 'admin':
+        Get.offAll(() => AdminDashboardScreen());
+        break;
+      case 'karyawan':
+      case 'user':
+      default:
+        Get.offAll(() => DashboardScreen());
+        break;
     }
   }
 
@@ -75,20 +151,37 @@ class AuthController extends GetxController {
     try {
       String? token = await storage.read(key: 'auth_token');
       if (token != null) {
-        // Beritahu backend Laravel untuk menghapus token
         await dio.post(
           '$apiUrl/logout',
-          options: Options(headers: {
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token',
-          }),
+          options: Options(
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          ),
         );
       }
     } catch (e) {
+      print("============= ERROR ASLI: =============");
+      print(e.toString());
+
+      // Kode bawaan Anda
+      Get.snackbar('Gagal Login', 'Terjadi kesalahan sistem');
       // Abaikan jika error dari server (misal: token sudah terlanjur hangus)
     } finally {
-      // Bersihkan token dari memori HP dan kembalikan ke halaman Login
+      // Bersihkan semua data sesi dari memori HP
       await storage.delete(key: 'auth_token');
+      await storage.delete(key: 'user_role');
+      await storage.delete(key: 'user_name');
+      await storage.delete(key: 'user_email');
+      // ---> Hapus cache foto juga, biar gak ketuker kalau user lain
+      // login di HP yang sama.
+      await storage.delete(key: 'user_photo');
+
+      userRole.value = '';
+      userName.value = '';
+      userEmail.value = '';
+
       Get.offAll(() => LoginScreen());
     }
   }

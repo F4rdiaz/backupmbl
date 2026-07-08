@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/auth/login_screen.dart';
+import 'package:get_storage/get_storage.dart';
 
-void main() {
+// Pastikan import path-nya sesuai dengan struktur folder Anda
+import 'controllers/auth_controller.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/splash/splash_screen.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
+
+  // Mendaftarkan AuthController agar tersedia di seluruh aplikasi
+  Get.put(AuthController());
+
   runApp(const GeoAttendApp());
 }
 
@@ -16,22 +26,18 @@ class GeoAttendApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'GeoAttend',
       debugShowCheckedModeBanner: false,
+
       theme: ThemeData(
-        // Skema Warna Modern
-        primaryColor: const Color(0xFF0EA5E9), // Biru Cerah
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC), // Putih Abu-abu bersih
+        primaryColor: const Color(0xFF0EA5E9),
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF0EA5E9),
           primary: const Color(0xFF0EA5E9),
           secondary: const Color(0xFF3B82F6),
         ),
-        
-        // Integrasi Plus Jakarta Sans ke seluruh aplikasi
         textTheme: GoogleFonts.plusJakartaSansTextTheme(
-          Theme.of(context).textTheme,
+          ThemeData.light().textTheme,
         ),
-        
-        // Styling Global untuk Tombol
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 0,
@@ -48,12 +54,13 @@ class GeoAttendApp extends StatelessWidget {
             ),
           ),
         ),
-        
-        // Styling Global untuk Input Text (TextField)
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -69,9 +76,8 @@ class GeoAttendApp extends StatelessWidget {
           hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
         ),
       ),
-      
-      // Halaman pertama yang akan diload (Nanti kita ubah ke Splash Screen / Login)
-      home: LoginScreen(),
+      home:
+          const SplashScreen(), // Pastikan di SplashScreen.dart constructor-nya pakai 'const'
     );
   }
 }

@@ -3,9 +3,10 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
+import '../config/api_config.dart';
 
 class HistoryController extends GetxController {
-  final String apiUrl = 'http://192.168.18.16:8000/api'; 
+  final String apiUrl = ApiConfig.baseUrl;
   final Dio dio = Dio();
   final storage = const FlutterSecureStorage();
 
@@ -17,7 +18,12 @@ class HistoryController extends GetxController {
   // ==========================================
   var selectedFilter = '7 Hari Terakhir'.obs;
   var customDate = Rxn<DateTime>(); // Nyimpen tanggal kalau pilih manual
-  final List<String> filterOptions = ['Hari Ini', '7 Hari Terakhir', 'Semua Data', 'Pilih Tanggal...'];
+  final List<String> filterOptions = [
+    'Hari Ini',
+    '7 Hari Terakhir',
+    'Semua Data',
+    'Pilih Tanggal...',
+  ];
 
   @override
   void onInit() {
@@ -32,17 +38,23 @@ class HistoryController extends GetxController {
 
       final response = await dio.get(
         '$apiUrl/attendance/history', // Pastikan endpoint ini benar di Laravel lu
-        options: Options(headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        }),
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
 
       if (response.data['success'] == true) {
         historyList.value = response.data['data'];
       }
     } catch (e) {
-      Get.snackbar('Error', 'Gagal memuat riwayat absen', backgroundColor: Colors.redAccent, colorText: Colors.white);
+      print("============= ERROR ASLI: =============");
+      print(e.toString());
+
+      // Kode bawaan Anda
+      Get.snackbar('Gagal Login', 'Terjadi kesalahan sistem');
     } finally {
       isLoading.value = false;
     }
@@ -66,18 +78,20 @@ class HistoryController extends GetxController {
       }
 
       if (selectedFilter.value == 'Hari Ini') {
-        return itemDate.year == now.year && itemDate.month == now.month && itemDate.day == now.day;
-      } 
-      else if (selectedFilter.value == '7 Hari Terakhir') {
+        return itemDate.year == now.year &&
+            itemDate.month == now.month &&
+            itemDate.day == now.day;
+      } else if (selectedFilter.value == '7 Hari Terakhir') {
         DateTime sevenDaysAgo = now.subtract(const Duration(days: 7));
-        return itemDate.isAfter(sevenDaysAgo) || itemDate.isAtSameMomentAs(sevenDaysAgo);
-      } 
-      else if (selectedFilter.value == 'Pilih Tanggal...' && customDate.value != null) {
+        return itemDate.isAfter(sevenDaysAgo) ||
+            itemDate.isAtSameMomentAs(sevenDaysAgo);
+      } else if (selectedFilter.value == 'Pilih Tanggal...' &&
+          customDate.value != null) {
         return itemDate.year == customDate.value!.year &&
-               itemDate.month == customDate.value!.month &&
-               itemDate.day == customDate.value!.day;
+            itemDate.month == customDate.value!.month &&
+            itemDate.day == customDate.value!.day;
       }
-      
+
       return true; // Untuk opsi 'Semua Data'
     }).toList();
   }
