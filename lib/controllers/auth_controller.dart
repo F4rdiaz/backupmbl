@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../screens/dashboard/dashboard_screen.dart';
+import '../screens/main_nav_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
-import '../screens/superadmin/superadmin_dashboard_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../config/api_config.dart';
+import '../services/geofence_service.dart';
 
 class AuthController extends GetxController {
   // PENTING: Ganti dengan IP Address WiFi lokal Anda
@@ -16,7 +16,7 @@ class AuthController extends GetxController {
 
   // Variabel reaktif
   var isLoading = false.obs;
-  var userRole = ''.obs; // 'karyawan' | 'admin' | 'superadmin'
+  var userRole = ''.obs; // 'karyawan' | 'admin'
   var userName = ''.obs;
   var userEmail = ''.obs;
 
@@ -70,9 +70,21 @@ class AuthController extends GetxController {
         String name = user['name'] ?? '';
         String userEmailValue = user['email'] ?? '';
 
-        // ---> AMBIL FOTO PROFIL DARI RESPONSE LOGIN (kalau backend
-        // menyertakannya di sini), biar begitu login foto langsung ke-cache
-        // dan gak perlu nunggu request ke /dashboard.
+        // ---> BLOKIR SUPERADMIN DI MOBILE
+        // Superadmin cuma dikelola lewat web, bukan mobile app.
+        if (role == 'superadmin') {
+          isLoading.value = false;
+          Get.snackbar(
+            'Akses Ditolak',
+            'Akun Superadmin hanya bisa login melalui website, bukan aplikasi mobile.',
+            backgroundColor: Colors.redAccent,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.TOP,
+            duration: const Duration(seconds: 4),
+          );
+          return;
+        }
+
         final photo = user['photo'];
 
         // Simpan semua ke brankas HP
@@ -127,19 +139,18 @@ class AuthController extends GetxController {
     }
   }
 
-  // Arahkan ke dashboard sesuai role
+  // Arahkan ke dashboard sesuai role (mobile cuma admin & karyawan)
   void _redirectByRole(String role) {
     switch (role) {
-      case 'superadmin':
-        Get.offAll(() => SuperadminDashboardScreen());
-        break;
       case 'admin':
         Get.offAll(() => AdminDashboardScreen());
         break;
       case 'karyawan':
       case 'user':
       default:
-        Get.offAll(() => DashboardScreen());
+        // ---> Diarahkan ke MainNavScreen (wadah 4-tab dengan
+        // floating pill navbar), bukan langsung ke DashboardScreen.
+        Get.offAll(() => MainNavScreen());
         break;
     }
   }
@@ -177,6 +188,10 @@ class AuthController extends GetxController {
       // ---> Hapus cache foto juga, biar gak ketuker kalau user lain
       // login di HP yang sama.
       await storage.delete(key: 'user_photo');
+
+      // ---> Hentikan background geofence, biar gak terus mantau lokasi
+      // padahal user udah logout.
+      await GeofenceService.stop();
 
       userRole.value = '';
       userName.value = '';

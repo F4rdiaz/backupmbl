@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 // Pastikan import path-nya sesuai dengan struktur folder Anda
 import 'controllers/auth_controller.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/splash/splash_screen.dart';
+import 'screens/intro/onboarding_screen.dart';
+import 'screens/main_nav_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
+
+  // Wajib dipanggil sekali di awal, biar isolate utama bisa nerima
+  // data yang dikirim dari background task (GeofenceTaskHandler).
+  FlutterForegroundTask.initCommunicationPort();
 
   // Mendaftarkan AuthController agar tersedia di seluruh aplikasi
   Get.put(AuthController());
@@ -76,8 +83,14 @@ class GeoAttendApp extends StatelessWidget {
           hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
         ),
       ),
-      home:
-          const SplashScreen(), // Pastikan di SplashScreen.dart constructor-nya pakai 'const'
+
+      initialRoute: '/splash',
+      getPages: [
+        GetPage(name: '/splash', page: () => const SplashScreen()),
+        GetPage(name: '/onboarding', page: () => const OnboardingScreen()),
+        GetPage(name: '/login', page: () => LoginScreen()),
+        GetPage(name: '/home', page: () => MainNavScreen()),
+      ],
     );
   }
 }

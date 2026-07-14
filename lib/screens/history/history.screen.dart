@@ -17,14 +17,8 @@ class HistoryScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const FaIcon(
-            FontAwesomeIcons.arrowLeft,
-            color: Color(0xFF0F172A),
-            size: 20,
-          ),
-          onPressed: () => Get.back(),
-        ),
+        // --- MENGHILANGKAN PANAH KEMBALI KARENA INI MAIN TAB ---
+        automaticallyImplyLeading: false,
         title: const Text(
           'Riwayat Absensi',
           style: TextStyle(
@@ -70,9 +64,9 @@ class HistoryScreen extends StatelessWidget {
                             child: Text(
                               value == 'Pilih Tanggal...' &&
                                       controller.customDate.value != null
-                                  ? DateFormat('dd MMM yyyy').format(
-                                      controller.customDate.value!,
-                                    ) // Ubah teks jadi tanggal yg dipilih
+                                  ? DateFormat(
+                                      'dd MMM yyyy',
+                                    ).format(controller.customDate.value!)
                                   : value,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
@@ -108,8 +102,7 @@ class HistoryScreen extends StatelessWidget {
                 );
               }
 
-              var listData = controller
-                  .filteredHistory; // Mengambil data yg sudah difilter
+              var listData = controller.filteredHistory;
 
               if (listData.isEmpty) {
                 return Center(
@@ -135,14 +128,18 @@ class HistoryScreen extends StatelessWidget {
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.all(24),
+                // --- PADDING BAWAH DITAMBAH (120) AGAR TIDAK TERTUTUP NAV BAR ---
+                padding: const EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: 120,
+                ),
                 itemCount: listData.length,
                 itemBuilder: (context, index) {
                   var item = listData[index];
 
-                  // Menyesuaikan dengan struktur JSON dari Laravel
                   bool isComplete = item['time_out'] != null;
-                  // Kalau API lu nyimpen nama shift di schedule.name
                   String shiftName = item['schedule'] != null
                       ? item['schedule']['name']
                       : 'Shift Reguler';
@@ -166,7 +163,7 @@ class HistoryScreen extends StatelessWidget {
   }
 
   // ==============================
-  // WIDGET CARD (ANTI OVERFLOW & LEBIH DETAIL)
+  // WIDGET CARD
   // ==============================
   Widget _buildHistoryCard({
     required String date,
@@ -199,7 +196,6 @@ class HistoryScreen extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ICON INDIKATOR
                 Container(
                   margin: const EdgeInsets.only(top: 4),
                   padding: const EdgeInsets.all(12),
@@ -221,7 +217,6 @@ class HistoryScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
 
-                // INFO DETAIL (SHIFT, TANGGAL, LOKASI)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +239,6 @@ class HistoryScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      // Teks Anti Overflow
                       Text(
                         '$location • $status',
                         style: const TextStyle(
@@ -263,7 +257,6 @@ class HistoryScreen extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // JAM IN / OUT
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,

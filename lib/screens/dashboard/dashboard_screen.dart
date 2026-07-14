@@ -4,26 +4,22 @@ import 'package:get/get.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 // IMPORT CONTROLLERS
-import '../../controllers/auth_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/attendance_controller.dart';
 
-// IMPORT SCREENS (UNTUK ROUTING)
-import '../history/history.screen.dart';
-import '../profile/profile_screen.dart';
-import '../karyawan/leave/leave_screen.dart';
+// IMPORT NAV CONTROLLER UNTUK MENGGESER TAB
+// Sesuaikan path ini dengan lokasi file main_navigation.dart kamu
+import '../main_nav_screen.dart';
 
 // ==========================================================
-// PALET WARNA — dibatasi sengaja biar kesan corporate/formal.
-// Warna status (hijau/oranye) HANYA dipakai untuk indikator,
-// bukan dekorasi, sesuai gaya corporate yang diminta.
+// PALET WARNA
 // ==========================================================
 class _Palette {
-  static const navy = Color(0xFF1E293B); // dipakai untuk shadow kartu
+  static const navy = Color(0xFF1E293B);
   static const navySoft = Color(0xFF334155);
-  static const slate900 = Color(0xFF0F172A); // Teks utama
-  static const slate500 = Color(0xFF64748B); // Teks sekunder
-  static const slate400 = Color(0xFF94A3B8); // Teks tersier / disabled
+  static const slate900 = Color(0xFF0F172A);
+  static const slate500 = Color(0xFF64748B);
+  static const slate400 = Color(0xFF94A3B8);
   static const border = Color(0xFFE2E8F0);
   static const bg = Color(0xFFF8FAFC);
   static const success = Color(0xFF059669);
@@ -35,7 +31,6 @@ class _Palette {
 class DashboardScreen extends StatelessWidget {
   DashboardScreen({super.key});
 
-  final AuthController authController = Get.find<AuthController>();
   final DashboardController dashController = Get.put(DashboardController());
   final AttendanceController attendanceController = Get.put(
     AttendanceController(),
@@ -57,30 +52,24 @@ class DashboardScreen extends StatelessWidget {
           }
 
           return SingleChildScrollView(
-            physics: const NeverScrollableScrollPhysics(),
+            physics: const BouncingScrollPhysics(),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ---------------- HEADER ----------------
-                  _buildHeader(),
-                  const SizedBox(height: 24),
-
                   if (dashController.assignmentsList.isNotEmpty &&
                       !dashController.hasActiveShift.value)
                     _buildNoticeBar(
                       icon: FontAwesomeIcons.solidBell,
                       color: _Palette.info,
                       text:
-                          'Anda memiliki jadwal shift hari ini. Jangan lupa untuk Absen Masuk!',
+                          'Anda memiliki jadwal shift hari ini.\nJangan lupa untuk Absen Masuk!',
                     ),
 
-                  // ---------------- HERO: JAM & SHIFT ----------------
                   _buildTimeCard(),
                   const SizedBox(height: 18),
 
-                  // ---------------- STATUS SECTION ----------------
                   if (dashController.hasActiveShift.value)
                     _buildStatusSection(
                       title: 'Status Shift Berjalan',
@@ -88,7 +77,7 @@ class DashboardScreen extends StatelessWidget {
                         icon: FontAwesomeIcons.circleCheck,
                         color: _Palette.success,
                         text:
-                            'Anda sudah Absen Masuk. Dropdown jadwal dikunci hingga Anda Absen Pulang.',
+                            'Anda sudah Absen Masuk.\nDropdown jadwal dikunci hingga Anda Absen Pulang.',
                       ),
                     )
                   else if (dashController.assignmentsList.isNotEmpty)
@@ -103,13 +92,12 @@ class DashboardScreen extends StatelessWidget {
                         icon: FontAwesomeIcons.champagneGlasses,
                         color: _Palette.info,
                         text:
-                            'Semua shift Anda hari ini telah selesai! Selamat beristirahat.',
+                            'Semua shift Anda hari ini telah selesai!\nSelamat beristirahat.',
                       ),
                     ),
 
                   const SizedBox(height: 18),
 
-                  // ---------------- AKSI CEPAT ----------------
                   const Text(
                     'Aksi Cepat',
                     style: TextStyle(
@@ -166,7 +154,6 @@ class DashboardScreen extends StatelessWidget {
                                             '${a['location_id']}_${a['schedule_id']}' ==
                                             selectedId,
                                       );
-
                                   double targetLat = double.parse(
                                     selectedAssignment['location']['latitude']
                                         .toString(),
@@ -183,7 +170,6 @@ class DashboardScreen extends StatelessWidget {
                                               .toString(),
                                         )
                                       : 100.0;
-
                                   attendanceController.clockIn(
                                     selectedId,
                                     targetLat,
@@ -245,7 +231,6 @@ class DashboardScreen extends StatelessWidget {
                                             '${a['location_id']}_${a['schedule_id']}' ==
                                             selectedId,
                                       );
-
                                   double targetLat = double.parse(
                                     selectedAssignment['location']['latitude']
                                         .toString(),
@@ -262,7 +247,6 @@ class DashboardScreen extends StatelessWidget {
                                               .toString(),
                                         )
                                       : 100.0;
-
                                   attendanceController.clockOut(
                                     selectedId,
                                     targetLat,
@@ -286,7 +270,8 @@ class DashboardScreen extends StatelessWidget {
                           'Riwayat Absen',
                           FontAwesomeIcons.clockRotateLeft,
                           _Palette.navySoft,
-                          onTap: () => Get.to(() => HistoryScreen()),
+                          // --- MENGGESER TAB KE RIWAYAT (INDEX 1) ---
+                          onTap: () => Get.find<NavController>().changeTab(1),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -295,11 +280,13 @@ class DashboardScreen extends StatelessWidget {
                           'Izin & Cuti',
                           FontAwesomeIcons.envelopeOpenText,
                           _Palette.navySoft,
-                          onTap: () => Get.to(() => LeaveScreen()),
+                          // --- MENGGESER TAB KE IZIN & CUTI (INDEX 2) ---
+                          onTap: () => Get.find<NavController>().changeTab(2),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 90),
                 ],
               ),
             ),
@@ -309,96 +296,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // HEADER: avatar kotak-rounded, teks rapi, tombol keluar minimal
-  // ============================================================
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        GestureDetector(
-          onTap: () => Get.to(() => ProfileScreen()),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: _Palette.navy,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: dashController.userProfilePic.value.isEmpty
-                      ? const Center(
-                          child: FaIcon(
-                            FontAwesomeIcons.user,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        )
-                      : Image.network(
-                          dashController.userProfilePic.value,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Center(
-                                child: FaIcon(
-                                  FontAwesomeIcons.user,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                              ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dashController.userName.value,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: _Palette.slate900,
-                    ),
-                  ),
-                  Text(
-                    dashController.currentDate.value,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: _Palette.slate500,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        InkWell(
-          onTap: () => authController.logout(),
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              border: Border.all(color: _Palette.border),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const FaIcon(
-              FontAwesomeIcons.arrowRightFromBracket,
-              color: _Palette.slate500,
-              size: 16,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ============================================================
-  // NOTICE BAR: reminder shift, dipakai untuk banner atas
-  // ============================================================
   Widget _buildNoticeBar({
     required FaIconData icon,
     required Color color,
@@ -448,16 +345,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // HERO CARD: waktu & shift.
-  // SEKARANG background-nya adalah _AnimatedSkyCard yang mengisi
-  // SELURUH kartu dan otomatis ganti tampilan sesuai jam:
-  //   Pagi (05:00-10:59) / Siang (11:00-14:59) /
-  //   Sore (15:00-17:59) / Malam (18:00-04:59)
-  // Konten (nama shift, jam, lokasi) tetap sama persis, cuma
-  // sekarang ditumpuk di atas animasi lewat Stack, dengan overlay
-  // gelap tipis di bawah supaya teks tetap kebaca di semua fase.
-  // ============================================================
   Widget _buildTimeCard() {
     return Container(
       width: double.infinity,
@@ -476,10 +363,7 @@ class DashboardScreen extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Lapisan animasi langit - mengisi seluruh kartu
           const _AnimatedSkyCard(),
-
-          // Konten di atas animasi
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
             child: Column(
@@ -564,9 +448,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // Label kecil nama fase waktu (Pagi/Siang/Sore/Malam) di pojok
-  // kanan atas, menggantikan badge ikon kecil yang lama - sekarang
-  // tidak perlu ikon lagi karena seluruh kartu sudah jadi animasinya.
   Widget _buildPeriodLabel() {
     final period = _skyPeriodFromHour(DateTime.now().hour);
     return Container(
@@ -587,9 +468,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // STATUS SECTION wrapper: judul kecil + isi (dropdown/info strip)
-  // ============================================================
   Widget _buildStatusSection({required String title, required Widget child}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,11 +487,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // INFO STRIP: dipakai untuk status "sudah absen" / "shift selesai"
-  // Gaya corporate: aksen warna cuma di garis kiri, bukan seluruh
-  // background, biar tidak terlalu ramai.
-  // ============================================================
   Widget _buildInfoStrip({
     required FaIconData icon,
     required Color color,
@@ -655,9 +528,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // DROPDOWN PILIH SHIFT - logika identik dengan versi sebelumnya
-  // ============================================================
   Widget _buildShiftDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -713,10 +583,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // ACTION CARD - signature SAMA PERSIS seperti versi lama supaya
-  // semua pemanggilan di atas tidak perlu diubah sama sekali.
-  // ============================================================
   Widget _buildActionCard(
     String title,
     FaIconData icon,
@@ -727,10 +593,7 @@ class DashboardScreen extends StatelessWidget {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        onTap: () {
-          debugPrint("DEBUG: Tombol $title ditekan!");
-          onTap();
-        },
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
@@ -779,7 +642,7 @@ class DashboardScreen extends StatelessWidget {
 }
 
 // ============================================================
-// PERIODE WAKTU - 4 fase, dipakai bersama oleh label & animasi
+// PERIODE WAKTU & ANIMASI LANGIT
 // ============================================================
 enum _SkyPeriod { pagi, siang, sore, malam }
 
@@ -803,18 +666,8 @@ String _skyPeriodLabel(_SkyPeriod p) {
   }
 }
 
-// ============================================================
-// _AnimatedSkyCard
-// ------------------------------------------------------------
-// Mengisi SELURUH hero card. Cek jam tiap dibangun ulang lewat
-// _skyPeriodFromHour, lalu render gradient + elemen animasi yang
-// sesuai. Satu AnimationController dipakai untuk semua gerakan
-// (rotasi sinar, drift awan, kedip bintang) dengan frekuensi
-// berbeda-beda supaya ringan.
-// ============================================================
 class _AnimatedSkyCard extends StatefulWidget {
   const _AnimatedSkyCard();
-
   @override
   State<_AnimatedSkyCard> createState() => _AnimatedSkyCardState();
 }
@@ -843,7 +696,6 @@ class _AnimatedSkyCardState extends State<_AnimatedSkyCard>
   @override
   Widget build(BuildContext context) {
     final period = _skyPeriodFromHour(DateTime.now().hour);
-
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) {
@@ -853,9 +705,6 @@ class _AnimatedSkyCardState extends State<_AnimatedSkyCard>
           children: [
             Container(decoration: BoxDecoration(gradient: _gradient(period))),
             ..._skyContent(period, t),
-            // overlay gelap tipis dari atas (transparan) ke bawah
-            // (agak gelap) supaya teks jam & lokasi tetap terbaca
-            // di semua fase, termasuk siang yang terang.
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -1125,7 +974,6 @@ class _AnimatedSkyCardState extends State<_AnimatedSkyCard>
 class _StarSpec {
   final double dxFrac, dyFrac, size, phase, speed;
   _StarSpec(this.dxFrac, this.dyFrac, this.size, this.phase, this.speed);
-
   factory _StarSpec.random(Random r) {
     return _StarSpec(
       r.nextDouble(),
@@ -1142,14 +990,12 @@ class _RaysPainter extends CustomPainter {
   final double rayLength;
   final double radius;
   final Color color;
-
   _RaysPainter({
     required this.rayCount,
     required this.rayLength,
     required this.radius,
     required this.color,
   });
-
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
@@ -1157,18 +1003,19 @@ class _RaysPainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-
     for (int i = 0; i < rayCount; i++) {
       final angle = (2 * pi / rayCount) * i;
-      final start = Offset(
-        center.dx + radius * cos(angle),
-        center.dy + radius * sin(angle),
+      canvas.drawLine(
+        Offset(
+          center.dx + radius * cos(angle),
+          center.dy + radius * sin(angle),
+        ),
+        Offset(
+          center.dx + (radius + rayLength) * cos(angle),
+          center.dy + (radius + rayLength) * sin(angle),
+        ),
+        paint,
       );
-      final end = Offset(
-        center.dx + (radius + rayLength) * cos(angle),
-        center.dy + (radius + rayLength) * sin(angle),
-      );
-      canvas.drawLine(start, end, paint);
     }
   }
 
@@ -1178,7 +1025,6 @@ class _RaysPainter extends CustomPainter {
 
 class _CloudShape extends StatelessWidget {
   const _CloudShape();
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -1186,20 +1032,44 @@ class _CloudShape extends StatelessWidget {
       height: 40,
       child: Stack(
         children: [
-          Positioned(left: 10, top: 12, child: _blob(45, 26)),
-          Positioned(left: 30, top: 0, child: _blob(50, 34)),
-          Positioned(left: 55, top: 14, child: _blob(38, 22)),
+          Positioned(
+            left: 10,
+            top: 12,
+            child: Container(
+              width: 45,
+              height: 26,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 30,
+            top: 0,
+            child: Container(
+              width: 50,
+              height: 34,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 55,
+            top: 14,
+            child: Container(
+              width: 38,
+              height: 22,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-
-  Widget _blob(double w, double h) => Container(
-    width: w,
-    height: h,
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      shape: BoxShape.circle,
-    ),
-  );
 }

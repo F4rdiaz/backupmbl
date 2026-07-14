@@ -16,6 +16,8 @@ class LeaveScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        // --- MENGHILANGKAN PANAH KEMBALI KARENA INI MAIN TAB ---
+        automaticallyImplyLeading: false,
         iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
         title: const Text(
           'Izin & Cuti',
@@ -25,17 +27,20 @@ class LeaveScreen extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showFormBottomSheet(context),
-        backgroundColor: const Color(0xFF0EA5E9),
-        icon: const FaIcon(
-          FontAwesomeIcons.plus,
-          size: 16,
-          color: Colors.white,
-        ),
-        label: const Text(
-          'Ajukan',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 85.0),
+        child: FloatingActionButton.extended(
+          onPressed: () => _showFormBottomSheet(context),
+          backgroundColor: const Color(0xFF0EA5E9),
+          icon: const FaIcon(
+            FontAwesomeIcons.plus,
+            size: 16,
+            color: Colors.white,
+          ),
+          label: const Text(
+            'Ajukan',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
         ),
       ),
       body: Obx(() {
@@ -68,7 +73,13 @@ class LeaveScreen extends StatelessWidget {
         return RefreshIndicator(
           onRefresh: controller.fetchLeaves,
           child: ListView.builder(
-            padding: const EdgeInsets.all(20),
+            // --- PADDING BAWAH DITAMBAH (120) AGAR TIDAK TERTUTUP NAV BAR ---
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: 120,
+            ),
             itemCount: controller.leaveList.length,
             itemBuilder: (context, index) {
               final item = controller.leaveList[index];
@@ -84,7 +95,11 @@ class LeaveScreen extends StatelessWidget {
     Color statusColor;
     String statusLabel;
 
-    switch (item['status']) {
+    final String normalizedStatus = (item['status'] ?? '')
+        .toString()
+        .toLowerCase();
+
+    switch (normalizedStatus) {
       case 'approved':
         statusColor = const Color(0xFF10B981);
         statusLabel = 'Disetujui';
@@ -186,12 +201,10 @@ class _LeaveForm extends StatefulWidget {
 class _LeaveFormState extends State<_LeaveForm> {
   final DateFormat _fmt = DateFormat('dd MMM yyyy');
 
-  // --- PERBAIKAN 1: Logika Date Picker Dinamis ---
   Future<void> _pickDate(bool isStart) async {
     DateTime initial = DateTime.now();
     DateTime firstD = DateTime.now().subtract(const Duration(days: 30));
 
-    // Kalau user memilih Tanggal Selesai, firstDate dikunci mengikuti Tanggal Mulai
     if (!isStart && widget.controller.startDate.value != null) {
       firstD = widget.controller.startDate.value!;
       if (initial.isBefore(firstD)) {
@@ -209,7 +222,6 @@ class _LeaveFormState extends State<_LeaveForm> {
     if (picked != null) {
       if (isStart) {
         widget.controller.startDate.value = picked;
-        // Auto-reset endDate kalau posisinya ternyata di bawah startDate yang baru dipilih
         if (widget.controller.endDate.value != null &&
             widget.controller.endDate.value!.isBefore(picked)) {
           widget.controller.endDate.value = null;
@@ -224,7 +236,6 @@ class _LeaveFormState extends State<_LeaveForm> {
     await widget.controller.pickAttachment();
   }
 
-  // --- PERBAIKAN 2: Validasi Sebelum Kirim (Custom Submit Handler) ---
   void _handleSubmit() {
     final startDate = widget.controller.startDate.value;
     final endDate = widget.controller.endDate.value;
@@ -270,7 +281,6 @@ class _LeaveFormState extends State<_LeaveForm> {
       return;
     }
 
-    // Jika semua lolos validasi, baru jalankan logic backend dari controller-mu
     widget.controller.submitLeave();
   }
 
@@ -340,7 +350,7 @@ class _LeaveFormState extends State<_LeaveForm> {
                 widget.controller.endDate.value == null
                     ? 'Pilih tanggal'
                     : _fmt.format(widget.controller.endDate.value!),
-                () => _pickDate(false), // Sudah diamankan di fungsi _pickDate
+                () => _pickDate(false),
               ),
             ),
             const SizedBox(height: 16),
@@ -353,6 +363,7 @@ class _LeaveFormState extends State<_LeaveForm> {
             TextField(
               controller: widget.controller.reasonController,
               maxLines: 3,
+              maxLength: 200,
               decoration: InputDecoration(
                 hintText: 'Tuliskan alasan pengajuan...',
                 filled: true,
@@ -417,7 +428,6 @@ class _LeaveFormState extends State<_LeaveForm> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  // --- PERBAIKAN 3: Tombol Submit dihubungkan ke _handleSubmit ---
                   onPressed: widget.controller.isSubmitting.value
                       ? null
                       : _handleSubmit,

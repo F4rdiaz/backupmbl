@@ -23,6 +23,9 @@ class ProfileController extends GetxController {
   XFile? selectedImageFile;
   Uint8List? webImageBytes;
 
+  // ---- STATE UNTUK GANTI PASSWORD ----
+  var isChangingPassword = false.obs;
+
   late TextEditingController nameController;
   final DashboardController dashController = Get.find<DashboardController>();
 
@@ -77,7 +80,16 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<void> updateProfile() async {
+  // ============================================================
+  // UPDATE PROFIL (nama &/atau foto)
+  // ------------------------------------------------------------
+  // PENTING: fungsi ini TIDAK melakukan navigasi (tidak ada
+  // Get.back()/Navigator.pop di sini) karena dipanggil dari
+  // beberapa tempat berbeda (tap foto langsung, dialog ubah nama,
+  // dll). Biar UI pemanggil yang atur mau nutup dialog/halaman
+  // atau tidak, berdasarkan nilai return (true = sukses).
+  // ============================================================
+  Future<bool> updateProfile() async {
     if (nameController.text.trim().isEmpty) {
       Get.snackbar(
         'Peringatan',
@@ -85,7 +97,7 @@ class ProfileController extends GetxController {
         backgroundColor: Colors.orange,
         colorText: Colors.white,
       );
-      return;
+      return false;
     }
 
     try {
@@ -131,14 +143,22 @@ class ProfileController extends GetxController {
           await storage.write(key: 'user_photo', value: newPhoto);
         }
 
-        Get.back();
         Get.snackbar(
           'Sukses ✅',
           'Profil berhasil diperbarui!',
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
+        return true;
       }
+
+      Get.snackbar(
+        'Error',
+        response.data['message'] ?? 'Gagal memperbarui profil',
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+      return false;
     } on dio_client.DioException catch (e) {
       Get.snackbar(
         'Error',
@@ -146,8 +166,111 @@ class ProfileController extends GetxController {
         backgroundColor: Colors.redAccent,
         colorText: Colors.white,
       );
+      return false;
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // ============================================================
+  // GANTI PASSWORD
+  // ------------------------------------------------------------
+  // Dipanggil dari change_password_dialog.dart. Validasi dasar
+  // dilakukan di sini (kosong / tidak cocok / terlalu pendek)
+  // sebelum request ke server, supaya user dapat feedback cepat
+  // tanpa perlu round-trip ke API dulu.
+  //
+  // Sesuaikan endpoint '$apiUrl/change-password' dan nama field
+  // (old_password/new_password/new_password_confirmation) dengan
+  // route & validasi yang ada di backend Laravel kamu ya - ini
+  // konvensi standar Laravel, tapi cek lagi di controller backend.
+  //
+  // Return true kalau berhasil (dialog akan otomatis ditutup dari
+  // sisi UI), false kalau gagal (dialog tetap terbuka, snackbar
+  // error sudah ditampilkan di sini).
+  // ============================================================
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    if (oldPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
+      Get.snackbar(
+        'Peringatan',
+        'Semua kolom wajib diisi',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return false;
+    }
+
+    if (newPassword.length < 8) {
+      Get.snackbar(
+        'Peringatan',
+        'Password baru minimal 8 karakter',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return false;
+    }
+
+    if (newPassword != confirmPassword) {
+      Get.snackbar(
+        'Peringatan',
+        'Konfirmasi password baru tidak cocok',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return false;
+    }
+
+    try {
+      isChangingPassword.value = true;
+      String? token = await storage.read(key: 'auth_token');
+
+      final response = await dio.post(
+        '$apiUrl/change-password',
+        data: {
+          'old_password': oldPassword,
+          'new_password': newPassword,
+          'new_password_confirmation': confirmPassword,
+        },
+        options: dio_client.Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      if (response.data['success'] == true) {
+        Get.snackbar(
+          'Sukses ✅',
+          'Password berhasil diubah!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+        return true;
+      }
+
+      Get.snackbar(
+        'Error',
+        response.data['message'] ?? 'Gagal mengubah password',
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+      return false;
+    } on dio_client.DioException catch (e) {
+      Get.snackbar(
+        'Error',
+        e.response?.data['message'] ??
+            'Password lama salah atau terjadi kesalahan',
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+      return false;
+    } finally {
+      isChangingPassword.value = false;
     }
   }
 }

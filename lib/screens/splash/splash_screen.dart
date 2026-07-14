@@ -1,14 +1,9 @@
-import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-// Pastikan jalur import ini sesuai dengan struktur folder kamu ya
-import '../auth/login_screen.dart';
-import '../intro/onboarding_screen.dart';
-import '../dashboard/dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,151 +13,216 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  // Inisialisasi storage untuk membaca memori aplikasi
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  // Tema Biru - Putih
+  static const Color _primaryBlue = Color(0xFF0EA5E9); // Sky blue
+  static const Color _secondaryBlue = Color(0xFF3B82F6); // Blue
+  static const Color _darkText = Color(0xFF0F172A);
+  static const Color _greyText = Color(0xFF64748B);
 
   @override
   void initState() {
     super.initState();
-    // Panggil fungsi pengecekan status saat layar pertama kali dimuat
-    _checkAppStatus();
+    _handleNavigation();
   }
 
-  void _checkAppStatus() async {
-    // 1. Tahan di Splash Screen selama 3.5 detik biar animasi rileks dan elegan
-    await Future.delayed(const Duration(milliseconds: 3500));
+  // LOGIKA NAVIGASI PINTAR
+  Future<void> _handleNavigation() async {
+    // Tahan splash screen selama 4 detik (biar animasinya puas dilihat)
+    await Future.delayed(const Duration(seconds: 4));
 
-    // 2. Baca memori: apakah user sudah pernah lihat onboarding?
     String? hasSeenOnboarding = await _storage.read(key: 'has_seen_onboarding');
-
-    // 3. Baca memori: apakah user punya token login yang masih aktif?
     String? token = await _storage.read(key: 'auth_token');
 
-    // 4. Logika Navigasi Pintar (Gunakan Get.offAll agar histori splash dihapus)
-    if (mounted) {
-      if (hasSeenOnboarding != 'true') {
-        // Jika belum pernah lihat onboarding, lempar ke Onboarding Screen
-        Get.offAll(
-          () => const OnboardingScreen(),
-          transition: Transition.fadeIn,
-          duration: const Duration(
-            milliseconds: 800,
-          ), // Transisi lebih halus (0.8 detik)
-        );
-      } else if (token != null && token.isNotEmpty) {
-        // Jika sudah ada token login, LANGSUNG LEMPAR KE DASHBOARD (Auto Login)
-        Get.offAll(
-          () => DashboardScreen(),
-          transition: Transition.fadeIn,
-          duration: const Duration(milliseconds: 800),
-        );
-      } else {
-        // Jika sudah pernah onboarding tapi belum login, lempar ke Login Screen
-        Get.offAll(
-          () => LoginScreen(),
-          transition: Transition.fadeIn,
-          duration: const Duration(milliseconds: 800),
-        );
-      }
+    if (!mounted) return;
+
+    if (hasSeenOnboarding != 'true') {
+      Get.offAllNamed('/onboarding');
+    } else if (token != null && token.isNotEmpty) {
+      Get.offAllNamed('/home');
+    } else {
+      Get.offAllNamed('/login');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      backgroundColor: const Color(0xff0B1B4D),
+      backgroundColor: Colors.white,
       body: Stack(
+        alignment: Alignment.center,
         children: [
-          // ==========================================
-          // 1. BACKGROUND GRADIENT CORPORATE
-          // ==========================================
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xff0B1B4D),
-                  Color(0xff1E3A8A),
-                  Color(0xff0EA5E9),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                stops: [0, 0.45, 1],
+          // ==========================================================
+          // BASE GRADIENT (Full Screen, biar gak "setengah" lagi)
+          // ==========================================================
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    Color(0xFFE0F2FE), // biru sangat muda
+                    Colors.white,
+                  ],
+                  stops: [0.0, 0.5, 1.0],
+                ),
               ),
             ),
           ),
 
-          // ==========================================
-          // 2. KONTEN TENGAH (MINIMALIS & ELEGAN)
-          // ==========================================
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Icon Logo
-                Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.15),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.location_on_rounded,
-                        color: Colors.white,
-                        size: 54,
-                      ),
-                    )
-                    .animate()
-                    .scale(duration: 600.ms, curve: Curves.easeOutBack)
-                    .fadeIn(duration: 400.ms),
+          // ==========================================================
+          // BACKGROUND MESH BLOB (Nuansa Biru)
+          // ==========================================================
+          Positioned(
+            top: -100,
+            left: -100,
+            child: _buildBlob(_primaryBlue, size.width * 0.9),
+          ),
+          Positioned(
+            bottom: -100,
+            right: -100,
+            child: _buildBlob(_secondaryBlue, size.width * 0.9),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+              child: Container(color: Colors.white.withOpacity(0.1)),
+            ),
+          ),
 
-                const SizedBox(height: 24),
+          // ==========================================================
+          // KONTEN UTAMA
+          // ==========================================================
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // ANIMASI SMARTPHONE SHAKING
+              _buildSmartphone()
+                  .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                  )
+                  .shimmer(duration: 1200.ms, color: Colors.white54)
+                  .shake(hz: 4, curve: Curves.easeInOut, rotation: 0.05),
 
-                // Nama App
-                Text(
-                      "GeoAttend",
-                      style: GoogleFonts.poppins(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                      ),
-                    )
-                    .animate()
-                    .fadeIn(delay: 400.ms, duration: 500.ms)
-                    .slideY(begin: 0.2, end: 0, curve: Curves.easeOut),
+              const SizedBox(height: 40),
 
-                const SizedBox(height: 8),
+              // NAMA APLIKASI
+              Text(
+                    "GeoAttend",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w900,
+                      color: _darkText,
+                      letterSpacing: -1,
+                    ),
+                  )
+                  .animate()
+                  .fadeIn(delay: 500.ms, duration: 800.ms)
+                  .slideY(begin: 0.3, end: 0),
 
-                // Tagline Profesional
-                Text(
-                  "ENTERPRISE ATTENDANCE",
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.65),
-                    letterSpacing: 3.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ).animate().fadeIn(delay: 600.ms, duration: 500.ms),
+              const SizedBox(height: 8),
 
-                const SizedBox(height: 60),
+              // MOTTO / TAGLINE
+              Text(
+                "Attendance system simplified for enterprise.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _greyText,
+                  letterSpacing: 0.5,
+                ),
+              ).animate().fadeIn(delay: 1200.ms, duration: 800.ms),
 
-                // Loading Indicator Tipis
-                const SizedBox(
-                  width: 26,
-                  height: 26,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                ).animate().fadeIn(delay: 1000.ms, duration: 500.ms),
-              ],
+              const SizedBox(height: 60),
+
+              // INDICATOR LOADING HALUS
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_primaryBlue),
+                ),
+              ).animate().fadeIn(delay: 2000.ms),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // WIDGET SMARTPHONE GAYA GLASSMORPHISM
+  Widget _buildSmartphone() {
+    return Container(
+      width: 100,
+      height: 180,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryBlue.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          // Speaker smartphone (Notch)
+          Container(
+            width: 30,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFCBD5E1),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Expanded(child: SizedBox()),
+          // Efek Layar Menyala (Icon Lokasi di dalam HP)
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _primaryBlue.withOpacity(0.12),
+            ),
+            child: Icon(
+              Icons.location_on_rounded,
+              color: _primaryBlue,
+              size: 30,
+            ),
+          ),
+          const Expanded(child: SizedBox()),
+          // Tombol Home virtual
+          Container(
+            width: 40,
+            height: 3,
+            decoration: BoxDecoration(
+              color: const Color(0xFFCBD5E1),
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBlob(Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withOpacity(0.35),
       ),
     );
   }

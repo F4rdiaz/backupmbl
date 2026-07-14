@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import '../config/api_config.dart';
+import '../services/geofence_service.dart';
 
 class DashboardController extends GetxController {
   final String apiUrl = ApiConfig.baseUrl;
@@ -14,6 +15,12 @@ class DashboardController extends GetxController {
   var isLoading = true.obs;
   var userName = 'Karyawan'.obs;
   var userProfilePic = ''.obs; // ---> VARIABEL FOTO PROFIL
+
+  // ==========================================
+  // TAMBAHAN: EMAIL & ROLE untuk halaman Profil
+  // ==========================================
+  var userEmail = ''.obs;
+  var userRole = ''.obs;
 
   // Menyimpan seluruh list shift dan ID shift yang sedang dipilih
   var assignmentsList = <dynamic>[].obs;
@@ -35,6 +42,7 @@ class DashboardController extends GetxController {
     super.onInit();
     _startRealtimeClock();
     _loadCachedPhoto(); // Tampilkan foto dari cache dulu biar gak kosong pas loading
+    _loadCachedProfile(); // ---> Tampilkan email & role dari cache dulu
     fetchDashboardData();
   }
 
@@ -64,6 +72,18 @@ class DashboardController extends GetxController {
     String? cachedPhoto = await storage.read(key: 'user_photo');
     if (cachedPhoto != null && cachedPhoto.isNotEmpty) {
       userProfilePic.value = cachedPhoto;
+    }
+  }
+
+  // ---> BACA EMAIL & ROLE DARI CACHE, sama alasannya kayak foto di atas
+  Future<void> _loadCachedProfile() async {
+    String? cachedEmail = await storage.read(key: 'user_email');
+    String? cachedRole = await storage.read(key: 'user_role');
+    if (cachedEmail != null && cachedEmail.isNotEmpty) {
+      userEmail.value = cachedEmail;
+    }
+    if (cachedRole != null && cachedRole.isNotEmpty) {
+      userRole.value = cachedRole;
     }
   }
 
@@ -99,6 +119,27 @@ class DashboardController extends GetxController {
         // pakai nilai dari cache yang sudah dimuat di _loadCachedPhoto(),
         // jadi gak tiba-tiba kosong.
 
+        // ==========================================
+        // TAMBAHAN: ISI EMAIL & ROLE DARI SERVER, CACHE JUGA
+        // ==========================================
+        final emailFromServer = data['user']['email'];
+        if (emailFromServer != null && emailFromServer.toString().isNotEmpty) {
+          userEmail.value = emailFromServer.toString();
+          await storage.write(
+            key: 'user_email',
+            value: emailFromServer.toString(),
+          );
+        }
+
+        final roleFromServer = data['user']['role'];
+        if (roleFromServer != null && roleFromServer.toString().isNotEmpty) {
+          userRole.value = roleFromServer.toString();
+          await storage.write(
+            key: 'user_role',
+            value: roleFromServer.toString(),
+          );
+        }
+
         // ---> BACA STATUS ABSENSI HARI INI DARI LARAVEL <---
         var activeAttendance = data['active_attendance'];
         if (activeAttendance != null) {
@@ -120,6 +161,20 @@ class DashboardController extends GetxController {
           });
 
           assignmentsList.value = assignments;
+
+          // ---> MULAI PANTAU LOKASI di background, biar pas HP kamu
+          // masuk radius lokasi kerja, notifikasi otomatis muncul
+          // walau app di-minimize.
+          final geofenceTargets = assignments.map<Map<String, dynamic>>((a) {
+            return {
+              'id': '${a['location_id']}_${a['schedule_id']}',
+              'name': a['location']['name'],
+              'latitude': a['location']['latitude'],
+              'longitude': a['location']['longitude'],
+              'radius': a['location']['radius'] ?? 100.0,
+            };
+          }).toList();
+          GeofenceService.start(geofenceTargets);
 
           // =======================================================
           // 2. LOGIKA AUTO-SELECT (Pilih shift terdekat saat ini)
@@ -145,6 +200,9 @@ class DashboardController extends GetxController {
           shiftTime.value = 'Tidak ada jadwal';
           locationName.value = 'Tidak ada penugasan';
           selectedAssignmentId.value = '';
+
+          // Gak ada shift lagi hari ini, gak perlu pantau lokasi terus
+          GeofenceService.stop();
         }
       }
     } catch (e) {
